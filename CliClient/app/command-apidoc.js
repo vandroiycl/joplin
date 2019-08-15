@@ -1,19 +1,12 @@
 const { BaseCommand } = require('./base-command.js');
-const { _ } = require('lib/locale.js');
-const { cliUtils } = require('./cli-utils.js');
-const EncryptionService = require('lib/services/EncryptionService');
-const DecryptionWorker = require('lib/services/DecryptionWorker');
-const MasterKey = require('lib/models/MasterKey');
 const BaseItem = require('lib/models/BaseItem');
 const BaseModel = require('lib/BaseModel');
-const Setting = require('lib/models/Setting.js');
 const { toTitleCase } = require('lib/string-utils.js');
 const { reg } = require('lib/registry.js');
 const markdownUtils = require('lib/markdownUtils');
 const { Database } = require('lib/database.js');
 
 class Command extends BaseCommand {
-
 	usage() {
 		return 'apidoc';
 	}
@@ -23,15 +16,19 @@ class Command extends BaseCommand {
 	}
 
 	createPropertiesTable(tableFields) {
-  		const headers = [
-  			{ name: 'name', label: 'Name' },
-  			{ name: 'type', label: 'Type', filter: (value) => {
-  				return Database.enumName('fieldType', value);
-  			}},
-  			{ name: 'description', label: 'Description' },
-  		];
-		
-		return markdownUtils.createMarkdownTable(headers, tableFields); 
+		const headers = [
+			{ name: 'name', label: 'Name' },
+			{
+				name: 'type',
+				label: 'Type',
+				filter: value => {
+					return Database.enumName('fieldType', value);
+				},
+			},
+			{ name: 'description', label: 'Description' },
+		];
+
+		return markdownUtils.createMarkdownTable(headers, tableFields);
 	}
 
 	async action(args) {
@@ -70,8 +67,8 @@ class Command extends BaseCommand {
 		lines.push('}');
 		lines.push('```');
 		lines.push('');
-		
-		lines.push('# Authorisation')
+
+		lines.push('# Authorisation');
 		lines.push('');
 		lines.push('To prevent unauthorised applications from accessing the API, the calls must be authentified. To do so, you must provide a token as a query parameter for each API call. You can get this token from the Joplin desktop application, on the Web Clipper Options screen.');
 		lines.push('');
@@ -113,6 +110,11 @@ class Command extends BaseCommand {
 		lines.push('\tcurl http://localhost:41184/tags?fields=id');
 		lines.push('');
 
+		lines.push('# Error handling');
+		lines.push('');
+		lines.push('In case of an error, an HTTP status code >= 400 will be returned along with a JSON object that provides more info about the error. The JSON object is in the format `{ "error": "description of error" }`.');
+		lines.push('');
+
 		lines.push('# About the property types');
 		lines.push('');
 		lines.push('* Text is UTF-8.');
@@ -123,6 +125,11 @@ class Command extends BaseCommand {
 		lines.push('# Testing if the service is available');
 		lines.push('');
 		lines.push('Call **GET /ping** to check if the service is available. It should return "JoplinClipperServer" if it works.');
+		lines.push('');
+
+		lines.push('# Searching');
+		lines.push('');
+		lines.push('Call **GET /search?query=YOUR_QUERY** to search for notes. This end-point supports the `field` parameter which is recommended to use so that you only get the data that you need. The query syntax is as described in the main documentation: https://joplinapp.org/#searching');
 		lines.push('');
 
 		for (let i = 0; i < models.length; i++) {
@@ -154,11 +161,11 @@ class Command extends BaseCommand {
 					type: Database.enumId('fieldType', 'text'),
 					description: 'If an image is provided, you can also specify an optional rectangle that will be used to crop the image. In format `{ x: x, y: y, width: width, height: height }`',
 				});
-				tableFields.push({
-					name: 'tags',
-					type: Database.enumId('fieldType', 'text'),
-					description: 'Comma-separated list of tags. eg. `tag1,tag2`.',
-				});
+				// tableFields.push({
+				// 	name: 'tags',
+				// 	type: Database.enumId('fieldType', 'text'),
+				// 	description: 'Comma-separated list of tags. eg. `tag1,tag2`.',
+				// });
 			}
 
 			lines.push('# ' + toTitleCase(tableName));
@@ -283,7 +290,6 @@ class Command extends BaseCommand {
 
 		this.stdout(lines.join('\n'));
 	}
-
 }
 
 module.exports = Command;

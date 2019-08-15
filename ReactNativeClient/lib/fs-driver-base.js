@@ -1,7 +1,7 @@
 const { filename, fileExtension } = require('lib/path-utils');
+const { time } = require('lib/time-utils.js');
 
 class FsDriverBase {
-
 	async isDirectory(path) {
 		const stat = await this.stat(path);
 		return !stat ? false : stat.isDirectory();
@@ -33,11 +33,33 @@ class FsDriverBase {
 			if (!exists) return nameToTry;
 			nameToTry = nameNoExt + ' (' + counter + ')' + extension;
 			counter++;
-			if (counter >= 1000) nameToTry = nameNoExt + ' (' + ((new Date()).getTime()) + ')' + extension;
+			if (counter >= 1000) nameToTry = nameNoExt + ' (' + new Date().getTime() + ')' + extension;
 			if (counter >= 10000) throw new Error('Cannot find unique title');
 		}
 	}
 
+	async removeAllThatStartWith(dirPath, filenameStart) {
+		if (!filenameStart || !dirPath) throw new Error('dirPath and filenameStart cannot be empty');
+
+		const stats = await this.readDirStats(dirPath);
+
+		for (const stat of stats) {
+			if (stat.path.indexOf(filenameStart) === 0) {
+				await this.remove(dirPath + '/' + stat.path);
+			}
+		}
+	}
+
+	async waitTillExists(path, timeout = 10000) {
+		const startTime = Date.now();
+
+		while (true) {
+			const e = await this.exists(path);
+			if (e) return true;
+			if (Date.now() - startTime > timeout) return false;
+			await time.msleep(100);
+		}
+	}
 }
 
 module.exports = FsDriverBase;

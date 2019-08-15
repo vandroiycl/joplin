@@ -2,11 +2,9 @@ const BaseModel = require('lib/BaseModel.js');
 const BaseItem = require('lib/models/BaseItem.js');
 const NoteTag = require('lib/models/NoteTag.js');
 const Note = require('lib/models/Note.js');
-const { time } = require('lib/time-utils.js');
 const { _ } = require('lib/locale');
 
 class Tag extends BaseItem {
-
 	static tableName() {
 		return 'tags';
 	}
@@ -30,9 +28,12 @@ class Tag extends BaseItem {
 		let noteIds = await this.noteIds(tagId);
 		if (!noteIds.length) return [];
 
-		return Note.search(Object.assign({}, options, {
-			conditions: ['id IN ("' + noteIds.join('","') + '")'],
-		}))
+		return Note.previews(
+			null,
+			Object.assign({}, options, {
+				conditions: ['id IN ("' + noteIds.join('","') + '")'],
+			})
+		);
 	}
 
 	// Untag all the notes and delete tag
@@ -90,8 +91,19 @@ class Tag extends BaseItem {
 		return !!r;
 	}
 
+	static tagsWithNotesSql_() {
+		return 'select distinct tags.id from tags left join note_tags nt on nt.tag_id = tags.id left join notes on notes.id = nt.note_id where notes.id IS NOT NULL';
+	}
+
 	static async allWithNotes() {
-		return await Tag.modelSelectAll('SELECT * FROM tags WHERE id IN (SELECT DISTINCT tag_id FROM note_tags)');
+		return await Tag.modelSelectAll('SELECT * FROM tags WHERE id IN (' + this.tagsWithNotesSql_() + ')');
+	}
+
+	static async searchAllWithNotes(options) {
+		if (!options) options = {};
+		if (!options.conditions) options.conditions = [];
+		options.conditions.push('id IN (' + this.tagsWithNotesSql_() + ')');
+		return this.search(options);
 	}
 
 	static async tagsByNoteId(noteId) {
@@ -156,7 +168,7 @@ class Tag extends BaseItem {
 			}
 		}
 
-		return super.save(o, options).then((tag) => {
+		return super.save(o, options).then(tag => {
 			this.dispatch({
 				type: 'TAG_UPDATE_ONE',
 				item: tag,
@@ -164,7 +176,6 @@ class Tag extends BaseItem {
 			return tag;
 		});
 	}
-
 }
 
 module.exports = Tag;
